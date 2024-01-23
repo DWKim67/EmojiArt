@@ -59,6 +59,7 @@ class EmojiArtDocument: ObservableObject {
             resize(emoji, by: scale)
         }
     }
+
 }
 
 extension EmojiArt.Emoji {

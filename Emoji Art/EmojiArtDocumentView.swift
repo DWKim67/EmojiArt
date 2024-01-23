@@ -12,6 +12,7 @@ struct EmojiArtDocumentView: View {
     typealias Emoji = EmojiArt.Emoji
     
     @ObservedObject var document: EmojiArtDocument
+    @State var selectedEmojis: Set<Int> = []
     
     private let paletteEmojiSize: CGFloat = 40
 
@@ -22,6 +23,9 @@ struct EmojiArtDocumentView: View {
                 .font(.system(size: paletteEmojiSize))
                 .padding(.horizontal)
                 .scrollIndicators(.hidden)
+        }
+        .onTapGesture {
+            selectedEmojis.removeAll()
         }
     }
     
@@ -46,9 +50,25 @@ struct EmojiArtDocumentView: View {
             .position(Emoji.Position.zero.in(geometry))
         ForEach(document.emojis) { emoji in
             Text(emoji.string)
+                .padding(2)
+                .border(.blue, width: selectedEmojis.contains(emoji.id) ? 2 : 0)
                 .font(emoji.font)
                 .position(emoji.position.in(geometry))
+                .onTapGesture {
+                    if (selectedEmojis.remove(emoji.id) == nil) {
+                        selectedEmojis.insert(emoji.id)
+                    }
+                }
+                .gesture(moveEmojiGesture)
         }
+    }
+    @State private var emojiPan: CGOffset = .zero
+    
+    @GestureState private var gestureEmojiMove: CGOffset = .zero
+    
+    private var moveEmojiGesture: some Gesture {
+        DragGesture ()
+            
     }
 
     @State private var zoom: CGFloat = 1

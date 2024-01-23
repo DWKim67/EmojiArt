@@ -50,6 +50,7 @@ struct EmojiArt {
     private func index(of emojiId: Emoji.ID) -> Int? {
         emojis.firstIndex(where: { $0.id == emojiId })
     }
+    
 
     struct Emoji: Identifiable {
         let string: String
@@ -63,5 +64,7 @@ struct EmojiArt {
             
             static let zero = Self(x: 0, y: 0)
         }
+        
+        
     }
 }
