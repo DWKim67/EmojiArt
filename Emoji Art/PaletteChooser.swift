@@ -2,17 +2,107 @@
 //  PaletteChooser.swift
 //  Emoji Art
 //
-//  Created by Daniel Kim on 2024-01-15.
+//  Created by CS193p Instructor on 5/10/23.
+//  Copyright (c) 2023 Stanford University
 //
 
 import SwiftUI
 
 struct PaletteChooser: View {
+    @EnvironmentObject var store: PaletteStore
+    
+    @State private var showPaletteEditor = false
+    @State private var showPaletteList = false
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        HStack {
+            chooser
+            view(for: store.palettes[store.cursorIndex])
+        }
+        .clipped()
+        .sheet(isPresented: $showPaletteEditor, content: {
+            PaletteEditor(palette: $store.palettes[store.cursorIndex])
+                .font(nil)
+        })
+        .sheet(isPresented: $showPaletteList, content: {
+            NavigationStack {
+                EditablePaletteList(store: store)
+                    .font(nil)
+            }
+            
+        })
+    }
+    
+    private var chooser: some View {
+        AnimatedActionButton(systemImage: "paintpalette") {
+            store.cursorIndex += 1
+        }
+        .contextMenu {
+            gotoMenu
+            AnimatedActionButton("New", systemImage: "plus") {
+                store.insert(name: "", emojis: "")
+                showPaletteEditor = true
+            }
+            AnimatedActionButton("Delete", systemImage: "minus.circle", role: .destructive) {
+                store.palettes.remove(at: store.cursorIndex)
+            }
+            
+            AnimatedActionButton("Edit", systemImage: "pencil") {
+                showPaletteEditor = true
+            }
+            
+            AnimatedActionButton("List", systemImage: "list.bullet.rectangle.portrait") {
+                showPaletteList = true
+            }
+        }
+    }
+    
+    private var gotoMenu: some View {
+        Menu {
+            ForEach(store.palettes) { palette in
+                AnimatedActionButton(palette.name) {
+                    if let index = store.palettes.firstIndex(where: { $0.id == palette.id}) {
+                        store.cursorIndex = index
+                    }
+                }
+            }
+        } label: {
+            Label("Go To", systemImage: "test.insert")
+        }
+    }
+    
+    private func view(for palette: Palette) -> some View {
+        HStack {
+            Text(palette.name)
+            ScrollingEmojis(palette.emojis)
+        }
+        .id(palette.id)
+        .transition(.asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .top)))
     }
 }
 
-#Preview {
-    PaletteChooser()
+struct ScrollingEmojis: View {
+    let emojis: [String]
+    
+    init(_ emojis: String) {
+        self.emojis = emojis.uniqued.map(String.init)
+    }
+    
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack {
+                ForEach(emojis, id: \.self) { emoji in
+                    Text(emoji)
+                        .draggable(emoji)
+                }
+            }
+        }
+    }
+}
+
+struct PaletteChooser_Previews: PreviewProvider {
+    static var previews: some View {
+        PaletteChooser()
+            .environmentObject(PaletteStore(named: "Preview"))
+    }
 }
