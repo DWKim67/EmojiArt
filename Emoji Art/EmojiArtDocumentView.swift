@@ -13,11 +13,17 @@ struct EmojiArtDocumentView: View {
     
     @ObservedObject var document: EmojiArtDocument
     @State var selectedEmojis: Set<Int> = []
+    @State var isDeleteOn = false
     
     private let paletteEmojiSize: CGFloat = 40
 
     var body: some View {
         VStack(spacing: 0) {
+            HStack {
+                deleteButton
+                Spacer()
+            }.padding(5)
+            
             documentBody
             PaletteChooser()
                 .font(.system(size: paletteEmojiSize))
@@ -29,6 +35,22 @@ struct EmojiArtDocumentView: View {
         }
     }
     
+    private var deleteButton: some View {
+        Button(action: {
+            isDeleteOn.toggle()
+        }, label: {
+            Text("Delete")
+                .background{
+                    RoundedRectangle(cornerRadius: 4)
+                        .foregroundStyle(!isDeleteOn ? .red : .init(hue: 0.97, saturation: 0.4, brightness: 0.8))
+                        .padding(EdgeInsets(top: -2, leading: -4, bottom: -2, trailing: -4))
+                }
+                .fontWeight(.semibold)
+                .foregroundStyle(.white)
+                .font(/*@START_MENU_TOKEN@*/.title/*@END_MENU_TOKEN@*/)
+        })
+    }
+    
     private var documentBody: some View {
         GeometryReader { geometry in
             ZStack {
@@ -37,7 +59,8 @@ struct EmojiArtDocumentView: View {
                     .scaleEffect(zoom * gestureZoom)
                     .offset(pan + gesturePan)
             }
-            .gesture(panGesture.simultaneously(with: zoomGesture))
+            .gesture(selectedEmojis.isEmpty ? nil : scaleEmojiGesture)
+            .gesture(selectedEmojis.isEmpty ? panGesture.simultaneously(with: zoomGesture) : nil)
             .dropDestination(for: Sturldata.self) { sturldatas, location in
                 return drop(sturldatas, at: location, in: geometry)
             }
@@ -53,7 +76,20 @@ struct EmojiArtDocumentView: View {
                 .padding(2)
                 .border(.blue, width: selectedEmojis.contains(emoji.id) ? 2 : 0)
                 .font(emoji.font)
+                .overlay(alignment: .topLeading) {
+                    Image(systemName:"minus.circle.fill")
+                        .foregroundStyle(isDeleteOn ? .red : .clear)
+                        .fontWeight(.light)
+                        .onTapGesture {
+                            if isDeleteOn {
+                                selectedEmojis.remove(emoji.id)
+                                document.removeEmoji(emoji)
+                            }
+                        }
+                        .padding(.trailing, 2)
+                }
                 .position(emoji.position.in(geometry))
+                .scaleEffect(selectedEmojis.contains(emoji.id) ? gestureEmojiScale : 1)
                 .offset(selectedEmojis.contains(emoji.id) ? gestureEmojiMove : CGOffset())
                 .onTapGesture {
                     if (selectedEmojis.remove(emoji.id) == nil) {
@@ -63,18 +99,36 @@ struct EmojiArtDocumentView: View {
                 .gesture(selectedEmojis.isEmpty ? nil : moveEmojiGesture)
         }
     }
+    @State private var emojiScale: CGFloat = 1
     @State private var emojiPan: CGOffset = .zero
     
+    @GestureState private var gestureEmojiScale: CGFloat = 1
     @GestureState private var gestureEmojiMove: CGOffset = .zero
     
+    private var scaleEmojiGesture: some Gesture {
+        MagnificationGesture()
+            .updating($gestureEmojiScale) { inMotionPinchScale, gestureEmojiScale, _ in
+                gestureEmojiScale = inMotionPinchScale
+            }
+            .onEnded { endingPinchScale in
+                updateEmojiSize(by: endingPinchScale)
+            }
+    }
+    
     private var moveEmojiGesture: some Gesture {
-        return DragGesture()
+        DragGesture()
             .updating($gestureEmojiMove) { inMotionDragGestureValue, gestureEmojiMove, _ in
                 gestureEmojiMove = inMotionDragGestureValue.translation
             }
             .onEnded { endingDragGestureValue in
                 updateEmojiPositions(by: endingDragGestureValue.translation)
             }
+    }
+    
+    func updateEmojiSize(by gestureScale: CGFloat) {
+        for emojiID in selectedEmojis {
+            document.resize(emojiWithId: emojiID, by: gestureScale)
+        }
     }
     
     func updateEmojiPositions(by gestureMove: CGOffset) {
