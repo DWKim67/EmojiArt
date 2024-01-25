@@ -54,12 +54,13 @@ struct EmojiArtDocumentView: View {
                 .border(.blue, width: selectedEmojis.contains(emoji.id) ? 2 : 0)
                 .font(emoji.font)
                 .position(emoji.position.in(geometry))
+                .offset(selectedEmojis.contains(emoji.id) ? gestureEmojiMove : CGOffset())
                 .onTapGesture {
                     if (selectedEmojis.remove(emoji.id) == nil) {
                         selectedEmojis.insert(emoji.id)
                     }
                 }
-                .gesture(moveEmojiGesture)
+                .gesture(selectedEmojis.isEmpty ? nil : moveEmojiGesture)
         }
     }
     @State private var emojiPan: CGOffset = .zero
@@ -67,8 +68,19 @@ struct EmojiArtDocumentView: View {
     @GestureState private var gestureEmojiMove: CGOffset = .zero
     
     private var moveEmojiGesture: some Gesture {
-        DragGesture ()
-            
+        return DragGesture()
+            .updating($gestureEmojiMove) { inMotionDragGestureValue, gestureEmojiMove, _ in
+                gestureEmojiMove = inMotionDragGestureValue.translation
+            }
+            .onEnded { endingDragGestureValue in
+                updateEmojiPositions(by: endingDragGestureValue.translation)
+            }
+    }
+    
+    func updateEmojiPositions(by gestureMove: CGOffset) {
+        for emojiID in selectedEmojis {
+            document.move(emojiWithId: emojiID, by: gestureMove)
+        }
     }
 
     @State private var zoom: CGFloat = 1
